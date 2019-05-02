@@ -7,17 +7,17 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategoryViewController: UITableViewController {
     
-    var katalogArray = [Katalog]()
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-
+    let realm = try! Realm()
+    
+    var katalogArray : Results<Category>?
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadItems()
+       loadCategories()
         
         
     }
@@ -26,14 +26,12 @@ class CategoryViewController: UITableViewController {
     //MARK: - TableView Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return katalogArray.count
+        return katalogArray?.count ?? 1
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
         
-        let katalog = katalogArray[indexPath.row]
-        
-        cell.textLabel?.text = katalog.name
+        cell.textLabel?.text = katalogArray?[indexPath.row].name ?? "No categories added yet"
         
         return cell
     }
@@ -50,12 +48,11 @@ class CategoryViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Name", style: .default) { (action) in
             //what will happen once the user clicks the Add Item button on our UIAlert
             
-            let newKatalog = Katalog(context: self.context)
+            let newKatalog = Category()
             newKatalog.name = textField.text!
             //    newKatalog.done = false
-            self.katalogArray.append(newKatalog)
             
-            self.saveItems()
+            self.save(category: newKatalog)
             
         }
         
@@ -85,7 +82,7 @@ class CategoryViewController: UITableViewController {
         let destinationVC = segue.destination as! TodoListViewController
         
         if let indexPath = tableView.indexPathForSelectedRow {
-            destinationVC.selectedCategory = katalogArray[indexPath.row]
+            destinationVC.selectedCategory = katalogArray?[indexPath.row]
         }
     }
     
@@ -93,10 +90,11 @@ class CategoryViewController: UITableViewController {
     
     //MARK: - Data Manipulitaion Methods
 
-    func saveItems() {
-        
+    func save(category: Category) {
         do {
-            try context.save()
+            try realm.write {
+                realm.add(category)
+            }
         } catch {
             print("Error saving context, \(error)")
         }
@@ -105,13 +103,10 @@ class CategoryViewController: UITableViewController {
     }
     
     
-    func loadItems (with request : NSFetchRequest<Katalog> = Katalog.fetchRequest()) {
-        do {
-            katalogArray = try context.fetch(request)
-        }
-        catch {
-            print("Unable to read \(error)")
-        }
+    func loadCategories () {
+        
+        katalogArray = realm.objects(Category.self)
+        
         tableView.reloadData()
     }
     
